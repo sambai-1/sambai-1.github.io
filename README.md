@@ -1,6 +1,12 @@
 # Academic Pages
 **Academic Pages is a GitHub Pages template for personal and professional portfolio-oriented websites.**
 
+> This repo also has a `minimal` branch with a simpler alternate site
+> (from [minimal-sambai-1](https://github.com/sambai-1/minimal-sambai-1)).
+> GitHub Pages only serves one branch at a time — swap between them with
+> `scripts/swap-site.sh {academic-pages|minimal}`, or manually in
+> Settings > Pages > Branch.
+
 ![Academic Pages template example](images/themes/homepage-light.png "Academic Pages template example")
 
 # Getting Started
