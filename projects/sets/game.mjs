@@ -18,6 +18,7 @@ import {
   recordWrong,
   resumeRun,
 } from "./run-state.mjs";
+import { loadPreferences, savePreferences } from "./preferences.mjs";
 
 const SHARE_URL = "https://sambai-1.github.io/projects/sets/";
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -77,16 +78,18 @@ const elements = {
   closeResultButton: document.querySelector("#closeResultButton"),
 };
 
+const savedPreferences = loadPreferences();
+
 const state = {
   settings: {
-    runMode: "score",
-    difficulty: 3,
-    complexity: null,
+    runMode: savedPreferences.runMode,
+    difficulty: savedPreferences.difficulty,
+    complexity: savedPreferences.complexity,
   },
   run: null,
   round: null,
   finalSelection: null,
-  colorBlind: false,
+  colorBlind: savedPreferences.colorBlind,
   helpPausedRun: false,
   animationFrame: null,
 };
@@ -172,8 +175,13 @@ function updateControls() {
   elements.differenceTriggerValue.textContent = differences;
   elements.differenceSliderValue.textContent = differences;
   elements.differenceSlider.value = state.settings.complexity ?? 5;
+  elements.colorBlindToggle.checked = state.colorBlind;
   updateDifferenceSliderAppearance();
   elements.gameModeLabel.textContent = modeSummary();
+}
+
+function saveCurrentPreferences() {
+  savePreferences({ ...state.settings, colorBlind: state.colorBlind });
 }
 
 function updateStats(now = performance.now()) {
@@ -231,9 +239,20 @@ function renderPhotoBoard() {
   elements.photoBoard.replaceChildren();
   const layout = document.createElement("div");
   layout.className = "photo-layout";
+
+  const mobileGivenHeading = document.createElement("h3");
+  mobileGivenHeading.className = "mobile-board-heading";
+  mobileGivenHeading.textContent = "Given";
+
+  const mobileChoicesHeading = document.createElement("h3");
+  mobileChoicesHeading.className = "mobile-board-heading";
+  mobileChoicesHeading.textContent = "Choices";
+
   layout.append(
+    mobileGivenHeading,
     makeBoardColumn("Given 1", [state.round.prompts[0]], { prompt: true }),
     makeBoardColumn("Given 2", [state.round.prompts[1]], { prompt: true }),
+    mobileChoicesHeading,
   );
 
   for (let index = 0; index < state.round.candidates.length; index += 3) {
@@ -576,6 +595,7 @@ elements.runModeControls.addEventListener("click", (event) => {
   const button = event.target.closest("[data-run-mode]");
   if (!button || button.dataset.runMode === state.settings.runMode) return;
   state.settings.runMode = button.dataset.runMode;
+  saveCurrentPreferences();
   startNewRun();
 });
 
@@ -585,6 +605,7 @@ elements.difficultyControl.addEventListener("click", (event) => {
   const difficulty = Number(button.dataset.difficulty);
   if (difficulty === state.settings.difficulty) return;
   state.settings.difficulty = difficulty;
+  saveCurrentPreferences();
   startNewRun();
 });
 
@@ -602,11 +623,13 @@ elements.differenceSlider.addEventListener("change", () => {
   const complexity = sliderValue === 5 ? null : sliderValue;
   if (complexity === state.settings.complexity) return;
   state.settings.complexity = complexity;
+  saveCurrentPreferences();
   startNewRun();
 });
 
 elements.colorBlindToggle.addEventListener("change", () => {
   state.colorBlind = elements.colorBlindToggle.checked;
+  saveCurrentPreferences();
   renderBoard();
   renderHistory();
   buildInstructions();

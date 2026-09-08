@@ -16,6 +16,7 @@ export function createRun(settings, now) {
     finishedElapsedMs: null,
     finishReason: null,
     solved: [],
+    pendingWrongAttempts: 0,
   };
 }
 
@@ -42,11 +43,17 @@ export function resumeRun(run, now) {
 
 export function recordCorrect(run, cards, now) {
   run.correct += 1;
-  run.solved.push({ cards: [...cards], elapsedMs: activeElapsed(run, now) });
+  run.solved.push({
+    cards: [...cards],
+    elapsedMs: activeElapsed(run, now),
+    wrongAttempts: run.pendingWrongAttempts,
+  });
+  run.pendingWrongAttempts = 0;
 }
 
 export function recordWrong(run) {
   run.wrong += 1;
+  run.pendingWrongAttempts += 1;
 }
 
 export function completionReason(run, now) {
@@ -97,10 +104,17 @@ export function buildShareText(run, pageUrl) {
 
   lines.push("");
   for (const solution of run.solved) {
-    lines.push(`🟩 ${formatDuration(solution.elapsedMs)}`);
+    const attempts = `${"❌".repeat(solution.wrongAttempts)}🟩`;
+    lines.push(`${attempts} ${formatDuration(solution.elapsedMs)}`);
   }
 
-  if (run.solved.length > 0) lines.push("");
+  if (run.pendingWrongAttempts > 0) {
+    lines.push(
+      `${"❌".repeat(run.pendingWrongAttempts)} ${formatDuration(run.finishedElapsedMs ?? 0)}`,
+    );
+  }
+
+  if (run.solved.length > 0 || run.pendingWrongAttempts > 0) lines.push("");
   lines.push(
     `✅ ${run.correct}  ❌ ${run.wrong}  ⏱ ${formatDuration(run.finishedElapsedMs ?? 0)}`,
   );
