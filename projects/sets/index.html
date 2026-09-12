@@ -18,6 +18,14 @@
 
       <section class="setup-panel" aria-label="Game settings">
         <fieldset class="control-group">
+          <legend>Layout</legend>
+          <div class="segmented-control" id="layoutModeControls">
+            <button type="button" data-layout-mode="inline" aria-pressed="true">Inline</button>
+            <button type="button" data-layout-mode="embedded" aria-pressed="false">Embedded</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="control-group">
           <legend>Game</legend>
           <div class="segmented-control" id="runModeControls">
             <button type="button" data-run-mode="timed" aria-pressed="false">30 Seconds</button>
@@ -26,30 +34,42 @@
           </div>
         </fieldset>
 
-        <fieldset class="control-group" id="difficultyControl">
-          <legend>Candidates</legend>
-          <div class="segmented-control">
-            <button type="button" data-difficulty="3" aria-pressed="true">3</button>
-            <button type="button" data-difficulty="6" aria-pressed="false">6</button>
-            <button type="button" data-difficulty="9" aria-pressed="false">9</button>
-            <button type="button" data-difficulty="12" aria-pressed="false">12</button>
+        <div class="candidate-settings" id="candidateSettings">
+          <button
+            class="toolbar-link"
+            id="candidateSettingsButton"
+            type="button"
+            aria-expanded="false"
+            aria-controls="candidateSettingsCard"
+          >Candidates</button>
+          <div
+            class="slider-settings-card candidate-settings-card"
+            id="candidateSettingsCard"
+            role="group"
+            aria-label="Number of candidates"
+            hidden
+          >
+            <div class="slider-heading">
+              <label for="candidateSlider">Candidates</label>
+              <output id="candidateSliderValue" for="candidateSlider">6</output>
+            </div>
+            <input id="candidateSlider" type="range" min="6" max="15" step="3" value="6">
+            <div class="slider-labels" aria-hidden="true">
+              <span>6</span><span>9</span><span>12</span><span>15</span>
+            </div>
           </div>
-        </fieldset>
+        </div>
 
         <div class="difference-settings" id="differenceSettings">
           <button
-            class="select-trigger"
+            class="toolbar-link"
             id="differenceSettingsButton"
             type="button"
             aria-expanded="false"
             aria-controls="differenceSettingsCard"
-          >
-            <strong>Differences</strong>
-            <span id="differenceTriggerValue">Random</span>
-            <span class="select-chevron" aria-hidden="true">⌄</span>
-          </button>
+          >Differences</button>
           <div
-            class="difference-settings-card"
+            class="slider-settings-card difference-settings-card"
             id="differenceSettingsCard"
             role="group"
             aria-label="Number of differences"
@@ -97,7 +117,13 @@
         <div class="game-heading-row">
           <div>
             <p class="eyebrow" id="gameModeLabel">RACE TO 10</p>
-            <h2 id="gameHeading">Complete the set</h2>
+            <div class="game-title-row">
+              <h2 id="gameHeading">Complete the set</h2>
+              <div class="review-controls" id="reviewControls" hidden>
+                <button class="game-title-button" id="reshareButton" type="button">Share</button>
+                <button class="game-title-button" id="newGameButton" type="button">New Game</button>
+              </div>
+            </div>
           </div>
           <dl class="stats" aria-label="Current game statistics">
             <div>
@@ -117,11 +143,6 @@
 
         <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
         <div id="photoBoard"></div>
-
-        <div class="review-actions" id="reviewActions" hidden>
-          <p>This run is complete. Review your solved sets below or start again.</p>
-          <button class="button button-primary" id="newGameButton" type="button">New Game</button>
-        </div>
       </section>
 
       <section class="history-panel" id="historyPanel" aria-labelledby="historyHeading" hidden>
@@ -152,7 +173,8 @@
         <div class="example-list" id="exampleList"></div>
 
         <h3>Choose a card</h3>
-        <p>Click the completing card. Higher candidate settings add another column of three choices.</p>
+        <p>Pick the completing card. Candidates are grouped in threes.</p>
+        <p><strong>Inline</strong> separates the givens. <strong>Embedded</strong> highlights them in green within the grid.</p>
 
         <h3>Game types</h3>
         <ul>
@@ -160,7 +182,7 @@
           <li><strong>Race to 10:</strong> reach ten correct answers as quickly as possible.</li>
           <li><strong>Unlimited:</strong> keep solving until your first wrong answer.</li>
         </ul>
-        <p>Wrong attempts count in every mode, and you may retry any choice.</p>
+        <p>Wrong attempts count. You can retry.</p>
 
         <button class="button button-primary modal-done" id="doneHowToButton" type="button">Got it</button>
       </div>

@@ -107,8 +107,8 @@ export function createPhotoRound(
   rng = Math.random,
   differentFeatureCount = null,
 ) {
-  if (![3, 6, 9, 12].includes(candidateCount)) {
-    throw new Error("Candidate count must be 3, 6, 9, or 12.");
+  if (![4, 6, 7, 9, 10, 12, 13, 15].includes(candidateCount)) {
+    throw new Error("Unsupported candidate count.");
   }
 
   const prompt = createPrompt(rng, differentFeatureCount);

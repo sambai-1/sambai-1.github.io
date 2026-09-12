@@ -1,14 +1,16 @@
 export const PREFERENCE_STORAGE_KEY = "sets.preferences";
 
 export const DEFAULT_PREFERENCES = Object.freeze({
+  layoutMode: "inline",
   runMode: "score",
-  difficulty: 3,
+  difficulty: 6,
   complexity: null,
   colorBlind: false,
 });
 
 const RUN_MODES = new Set(["timed", "score", "unlimited"]);
-const DIFFICULTIES = new Set([3, 6, 9, 12]);
+const LAYOUT_MODES = new Set(["inline", "embedded"]);
+const DIFFICULTIES = new Set([6, 9, 12, 15]);
 const COMPLEXITIES = new Set([1, 2, 3, 4]);
 const PREFERENCE_VERSION = 1;
 
@@ -16,6 +18,9 @@ export function normalizePreferences(value) {
   const preferences = value && typeof value === "object" ? value : {};
 
   return {
+    layoutMode: LAYOUT_MODES.has(preferences.layoutMode)
+      ? preferences.layoutMode
+      : DEFAULT_PREFERENCES.layoutMode,
     runMode: RUN_MODES.has(preferences.runMode)
       ? preferences.runMode
       : DEFAULT_PREFERENCES.runMode,

@@ -3,6 +3,7 @@ import {
   FEATURE_NAMES,
   cardKey,
   createPhotoRound,
+  shuffle,
 } from "./core.mjs";
 import {
   RUN_MODES,
@@ -44,12 +45,16 @@ const elements = {
   doneHowToButton: document.querySelector("#doneHowToButton"),
   featureGuide: document.querySelector("#featureGuide"),
   exampleList: document.querySelector("#exampleList"),
+  layoutModeControls: document.querySelector("#layoutModeControls"),
   runModeControls: document.querySelector("#runModeControls"),
-  difficultyControl: document.querySelector("#difficultyControl"),
+  candidateSettings: document.querySelector("#candidateSettings"),
+  candidateSettingsButton: document.querySelector("#candidateSettingsButton"),
+  candidateSettingsCard: document.querySelector("#candidateSettingsCard"),
+  candidateSlider: document.querySelector("#candidateSlider"),
+  candidateSliderValue: document.querySelector("#candidateSliderValue"),
   differenceSettings: document.querySelector("#differenceSettings"),
   differenceSettingsButton: document.querySelector("#differenceSettingsButton"),
   differenceSettingsCard: document.querySelector("#differenceSettingsCard"),
-  differenceTriggerValue: document.querySelector("#differenceTriggerValue"),
   differenceSlider: document.querySelector("#differenceSlider"),
   differenceSliderValue: document.querySelector("#differenceSliderValue"),
   colorSettings: document.querySelector("#colorSettings"),
@@ -63,7 +68,8 @@ const elements = {
   timeStat: document.querySelector("#timeStat"),
   feedback: document.querySelector("#feedback"),
   photoBoard: document.querySelector("#photoBoard"),
-  reviewActions: document.querySelector("#reviewActions"),
+  reviewControls: document.querySelector("#reviewControls"),
+  reshareButton: document.querySelector("#reshareButton"),
   newGameButton: document.querySelector("#newGameButton"),
   historyPanel: document.querySelector("#historyPanel"),
   historyCount: document.querySelector("#historyCount"),
@@ -82,12 +88,14 @@ const savedPreferences = loadPreferences();
 
 const state = {
   settings: {
+    layoutMode: savedPreferences.layoutMode,
     runMode: savedPreferences.runMode,
     difficulty: savedPreferences.difficulty,
     complexity: savedPreferences.complexity,
   },
   run: null,
   round: null,
+  embeddedEntries: [],
   finalSelection: null,
   colorBlind: savedPreferences.colorBlind,
   helpPausedRun: false,
@@ -158,25 +166,37 @@ function differenceLabel(value) {
   return value === null ? "Random" : String(value);
 }
 
-function updateDifferenceSliderAppearance() {
-  const sliderValue = Number(elements.differenceSlider.value);
-  const progress = ((sliderValue - 1) / 4) * 100;
-  elements.differenceSlider.style.setProperty("--slider-progress", `${progress}%`);
+function updateSliderAppearance(slider) {
+  const value = Number(slider.value);
+  const min = Number(slider.min);
+  const max = Number(slider.max);
+  const progress = ((value - min) / (max - min)) * 100;
+  slider.style.setProperty("--slider-progress", `${progress}%`);
 }
 
 function updateControls() {
+  document.querySelectorAll("[data-layout-mode]").forEach((button) => {
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.layoutMode === state.settings.layoutMode),
+    );
+  });
   document.querySelectorAll("[data-run-mode]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.runMode === state.settings.runMode));
   });
-  document.querySelectorAll("[data-difficulty]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(Number(button.dataset.difficulty) === state.settings.difficulty));
-  });
+  elements.candidateSettingsButton.setAttribute(
+    "aria-label",
+    `Candidates: ${state.settings.difficulty}`,
+  );
+  elements.candidateSliderValue.textContent = state.settings.difficulty;
+  elements.candidateSlider.value = state.settings.difficulty;
   const differences = differenceLabel(state.settings.complexity);
-  elements.differenceTriggerValue.textContent = differences;
+  elements.differenceSettingsButton.setAttribute("aria-label", `Differences: ${differences}`);
   elements.differenceSliderValue.textContent = differences;
   elements.differenceSlider.value = state.settings.complexity ?? 5;
   elements.colorBlindToggle.checked = state.colorBlind;
-  updateDifferenceSliderAppearance();
+  updateSliderAppearance(elements.candidateSlider);
+  updateSliderAppearance(elements.differenceSlider);
   elements.gameModeLabel.textContent = modeSummary();
 }
 
@@ -215,31 +235,59 @@ function makeBoardColumn(label, cards, { prompt = false, startIndex = 0 } = {}) 
       return;
     }
 
-    const button = document.createElement("button");
-    button.className = "candidate-button";
-    button.type = "button";
-    button.dataset.cardKey = cardKey(card);
-    button.setAttribute("aria-label", `Option ${startIndex + index + 1}: ${cardDescription(card)}`);
-    button.disabled = state.run.status !== "playing";
-
-    if (state.finalSelection?.key === cardKey(card)) {
-      button.classList.add(`is-${state.finalSelection.outcome}`);
-    }
-
-    button.append(createCardElement(card));
-    button.addEventListener("click", () => handlePhotoChoice(card, button));
-    cardList.append(button);
+    cardList.append(createCandidateButton(card, startIndex + index + 1));
   });
 
   column.append(cardList);
   return column;
 }
 
-function renderPhotoBoard() {
-  elements.photoBoard.replaceChildren();
-  const layout = document.createElement("div");
-  layout.className = "photo-layout";
+function createCandidateButton(card, optionNumber) {
+  const button = document.createElement("button");
+  button.className = "candidate-button";
+  button.type = "button";
+  button.dataset.cardKey = cardKey(card);
+  button.setAttribute("aria-label", `Option ${optionNumber}: ${cardDescription(card)}`);
+  button.disabled = state.run.status !== "playing";
 
+  if (state.finalSelection?.key === cardKey(card)) {
+    button.classList.add(`is-${state.finalSelection.outcome}`);
+  }
+
+  button.append(createCardElement(card));
+  button.addEventListener("click", () => handlePhotoChoice(card, button));
+  return button;
+}
+
+function makeEmbeddedColumn(label, entries) {
+  const column = document.createElement("section");
+  column.className = "board-column answers-column embedded-column";
+  const heading = document.createElement("h3");
+  heading.textContent = label;
+  column.append(heading);
+
+  const cardList = document.createElement("div");
+  cardList.className = "column-cards";
+
+  entries.forEach((entry) => {
+    if (!entry.isGiven) {
+      cardList.append(createCandidateButton(entry.card, entry.optionNumber));
+      return;
+    }
+
+    const given = document.createElement("div");
+    given.className = "embedded-given";
+    const card = createCardElement(entry.card);
+    card.setAttribute("aria-label", `Given card: ${cardDescription(entry.card)}`);
+    given.append(card);
+    cardList.append(given);
+  });
+
+  column.append(cardList);
+  return column;
+}
+
+function renderInlineBoard(layout) {
   const mobileGivenHeading = document.createElement("h3");
   mobileGivenHeading.className = "mobile-board-heading";
   mobileGivenHeading.textContent = "Given";
@@ -265,6 +313,35 @@ function renderPhotoBoard() {
       ),
     );
   }
+}
+
+function renderEmbeddedBoard(layout) {
+  const mobileCardsHeading = document.createElement("h3");
+  mobileCardsHeading.className = "mobile-board-heading";
+  mobileCardsHeading.textContent = "Cards";
+  layout.append(mobileCardsHeading);
+
+  for (let index = 0; index < state.embeddedEntries.length; index += 3) {
+    const end = Math.min(index + 3, state.embeddedEntries.length);
+    layout.append(
+      makeEmbeddedColumn(
+        `Cards ${index + 1}–${end}`,
+        state.embeddedEntries.slice(index, end),
+      ),
+    );
+  }
+}
+
+function renderPhotoBoard() {
+  elements.photoBoard.replaceChildren();
+  const layout = document.createElement("div");
+  layout.className = `photo-layout is-${state.settings.layoutMode}`;
+
+  if (state.settings.layoutMode === "embedded") {
+    renderEmbeddedBoard(layout);
+  } else {
+    renderInlineBoard(layout);
+  }
 
   elements.photoBoard.append(layout);
 }
@@ -279,7 +356,7 @@ function displayFeatureValue(feature, value) {
 
 function renderBoard() {
   renderPhotoBoard();
-  elements.reviewActions.hidden = state.run.status !== "review";
+  elements.reviewControls.hidden = state.run.status !== "review";
 }
 
 function renderHistory() {
@@ -308,11 +385,22 @@ function renderHistory() {
 }
 
 function createNextRound() {
+  const candidateCount = state.settings.layoutMode === "embedded"
+    ? state.settings.difficulty - 2
+    : state.settings.difficulty;
   state.round = createPhotoRound(
-    state.settings.difficulty,
+    candidateCount,
     Math.random,
     state.settings.complexity,
   );
+  state.embeddedEntries = shuffle([
+    ...state.round.prompts.map((card) => ({ card, isGiven: true })),
+    ...state.round.candidates.map((card, index) => ({
+      card,
+      isGiven: false,
+      optionNumber: index + 1,
+    })),
+  ]);
   state.finalSelection = null;
 }
 
@@ -338,7 +426,7 @@ function handleCorrect(cards, now) {
 
   createNextRound();
   renderBoard();
-  setFeedback("Correct — here’s the next set.", "correct");
+  setFeedback("Correct", "correct");
 }
 
 function handlePhotoChoice(card, button) {
@@ -363,7 +451,7 @@ function handlePhotoChoice(card, button) {
   window.setTimeout(() => {
     if (button.dataset.wrongFlash === flashSequence) button.classList.remove("is-wrong");
   }, 450);
-  setFeedback("Not a set — try again.", "wrong");
+  setFeedback("Not a set", "wrong");
 
   const reason = completionReason(state.run, now);
   if (reason) endRun(reason);
@@ -451,6 +539,7 @@ function startNewRun() {
 
 function openHowTo() {
   closeColorSettings();
+  closeCandidateSettings();
   closeDifferenceSettings();
   state.helpPausedRun = pauseRun(state.run, performance.now());
   updateStats();
@@ -470,9 +559,29 @@ function closeColorSettings({ restoreFocus = false } = {}) {
 
 function toggleColorSettings() {
   const shouldOpen = elements.colorSettingsCard.hidden;
-  if (shouldOpen) closeDifferenceSettings();
+  if (shouldOpen) {
+    closeCandidateSettings();
+    closeDifferenceSettings();
+  }
   elements.colorSettingsCard.hidden = !shouldOpen;
   elements.colorSettingsButton.setAttribute("aria-expanded", String(shouldOpen));
+}
+
+function closeCandidateSettings({ restoreFocus = false } = {}) {
+  if (elements.candidateSettingsCard.hidden) return;
+  elements.candidateSettingsCard.hidden = true;
+  elements.candidateSettingsButton.setAttribute("aria-expanded", "false");
+  if (restoreFocus) elements.candidateSettingsButton.focus();
+}
+
+function toggleCandidateSettings() {
+  const shouldOpen = elements.candidateSettingsCard.hidden;
+  if (shouldOpen) {
+    closeColorSettings();
+    closeDifferenceSettings();
+  }
+  elements.candidateSettingsCard.hidden = !shouldOpen;
+  elements.candidateSettingsButton.setAttribute("aria-expanded", String(shouldOpen));
 }
 
 function closeDifferenceSettings({ restoreFocus = false } = {}) {
@@ -484,16 +593,25 @@ function closeDifferenceSettings({ restoreFocus = false } = {}) {
 
 function toggleDifferenceSettings() {
   const shouldOpen = elements.differenceSettingsCard.hidden;
-  if (shouldOpen) closeColorSettings();
+  if (shouldOpen) {
+    closeColorSettings();
+    closeCandidateSettings();
+  }
   elements.differenceSettingsCard.hidden = !shouldOpen;
   elements.differenceSettingsButton.setAttribute("aria-expanded", String(shouldOpen));
 }
 
 function closeResults() {
-  if (!enterReview(state.run)) return;
+  if (state.run.status === "result") enterReview(state.run);
+  if (state.run.status !== "review") return;
   elements.resultDialog.close();
   renderBoard();
   updateStats();
+}
+
+function reopenResults() {
+  if (state.run.status !== "review") return;
+  elements.resultDialog.showModal();
 }
 
 async function copyResults() {
@@ -514,7 +632,7 @@ async function copyResults() {
   }
 
   elements.shareButton.textContent = "Copied!";
-  elements.copyStatus.textContent = "Results copied to your clipboard.";
+  elements.copyStatus.textContent = "Copied";
   window.setTimeout(() => {
     elements.shareButton.textContent = "Share";
   }, 1800);
@@ -591,6 +709,14 @@ function buildInstructions() {
   }
 }
 
+elements.layoutModeControls.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-layout-mode]");
+  if (!button || button.dataset.layoutMode === state.settings.layoutMode) return;
+  state.settings.layoutMode = button.dataset.layoutMode;
+  saveCurrentPreferences();
+  startNewRun();
+});
+
 elements.runModeControls.addEventListener("click", (event) => {
   const button = event.target.closest("[data-run-mode]");
   if (!button || button.dataset.runMode === state.settings.runMode) return;
@@ -599,10 +725,13 @@ elements.runModeControls.addEventListener("click", (event) => {
   startNewRun();
 });
 
-elements.difficultyControl.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-difficulty]");
-  if (!button) return;
-  const difficulty = Number(button.dataset.difficulty);
+elements.candidateSettingsButton.addEventListener("click", toggleCandidateSettings);
+elements.candidateSlider.addEventListener("input", () => {
+  updateSliderAppearance(elements.candidateSlider);
+  elements.candidateSliderValue.textContent = elements.candidateSlider.value;
+});
+elements.candidateSlider.addEventListener("change", () => {
+  const difficulty = Number(elements.candidateSlider.value);
   if (difficulty === state.settings.difficulty) return;
   state.settings.difficulty = difficulty;
   saveCurrentPreferences();
@@ -611,7 +740,7 @@ elements.difficultyControl.addEventListener("click", (event) => {
 
 elements.differenceSettingsButton.addEventListener("click", toggleDifferenceSettings);
 elements.differenceSlider.addEventListener("input", () => {
-  updateDifferenceSliderAppearance();
+  updateSliderAppearance(elements.differenceSlider);
   elements.differenceSliderValue.textContent = differenceLabel(
     Number(elements.differenceSlider.value) === 5
       ? null
@@ -638,12 +767,16 @@ elements.colorBlindToggle.addEventListener("change", () => {
 elements.colorSettingsButton.addEventListener("click", toggleColorSettings);
 document.addEventListener("click", (event) => {
   if (!elements.colorSettings.contains(event.target)) closeColorSettings();
+  if (!elements.candidateSettings.contains(event.target)) closeCandidateSettings();
   if (!elements.differenceSettings.contains(event.target)) closeDifferenceSettings();
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !elements.colorSettingsCard.hidden) {
     event.preventDefault();
     closeColorSettings({ restoreFocus: true });
+  } else if (event.key === "Escape" && !elements.candidateSettingsCard.hidden) {
+    event.preventDefault();
+    closeCandidateSettings({ restoreFocus: true });
   } else if (event.key === "Escape" && !elements.differenceSettingsCard.hidden) {
     event.preventDefault();
     closeDifferenceSettings({ restoreFocus: true });
@@ -667,10 +800,11 @@ elements.resultDialog.addEventListener("cancel", (event) => {
 });
 elements.shareButton.addEventListener("click", () => {
   copyResults().catch(() => {
-    elements.copyStatus.textContent = "Could not copy automatically. Select the text above to copy it.";
+    elements.copyStatus.textContent = "Copy failed. Select the text above.";
   });
 });
 elements.closeResultButton.addEventListener("click", closeResults);
+elements.reshareButton.addEventListener("click", reopenResults);
 elements.newGameButton.addEventListener("click", startNewRun);
 
 buildInstructions();
