@@ -26,8 +26,9 @@ body {
   margin: 0;
   min-width: 320px;
   background: #fff;
-  color: var(--ink);
+  color: #727272;
   font: 14px/1.5 "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 400;
 }
 
 button {
@@ -65,7 +66,6 @@ a:focus-visible {
   margin: 6px 0 2px;
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1;
-  letter-spacing: -0.04em;
 }
 
 .site-header p,
@@ -121,7 +121,7 @@ a:focus-visible {
   padding: 16px 18px;
   border: 0;
   border-radius: 0;
-  background: #e9f7ee;
+  background: linear-gradient(to bottom, #f0fbf4 0%, #d7efdf 100%);
 }
 
 .control-group {
@@ -136,7 +136,6 @@ a:focus-visible {
   color: #4c5155;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -378,7 +377,6 @@ a:focus-visible {
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -405,7 +403,6 @@ a:focus-visible {
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
@@ -448,7 +445,6 @@ a:focus-visible {
   margin: 0 0 8px;
   color: var(--muted);
   font-size: 11px;
-  letter-spacing: 0.05em;
   text-align: center;
   text-transform: uppercase;
 }
@@ -475,7 +471,7 @@ a:focus-visible {
   place-items: center;
   overflow: hidden;
   border: 1px solid #d8dadd;
-  border-radius: 9px;
+  border-radius: 2px;
   background: #fff;
   box-shadow: 0 2px 6px rgb(20 28 35 / 6%);
 }
@@ -491,7 +487,7 @@ a:focus-visible {
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: 2px;
   background: transparent;
   cursor: pointer;
 }
@@ -524,12 +520,12 @@ a:focus-visible {
 .embedded-given {
   position: relative;
   width: 150px;
-  border-radius: 10px;
+  border-radius: 2px;
 }
 
 .embedded-given .set-card {
   border: 2px solid var(--good);
-  background: #f1fbf5;
+  background: linear-gradient(to bottom, #f1fbf5 0%, #d7efdf 100%);
   box-shadow: 0 0 0 3px rgb(19 138 80 / 20%);
 }
 
@@ -632,7 +628,6 @@ a:focus-visible {
 
 .modal-card h2 {
   font-size: 25px;
-  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -758,7 +753,6 @@ a:focus-visible {
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -900,7 +894,6 @@ a:focus-visible {
     margin: 0 0 -8px;
     color: var(--muted);
     font-size: 11px;
-    letter-spacing: 0.05em;
     text-align: center;
     text-transform: uppercase;
   }
