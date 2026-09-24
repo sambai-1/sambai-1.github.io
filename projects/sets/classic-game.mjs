@@ -1,5 +1,5 @@
 import { FEATURES, FEATURE_NAMES, cardKey, isSet } from "./core.mjs";
-import { elapsedBetweenSolves, formatDuration } from "./run-state.mjs";
+import { formatDuration } from "./run-state.mjs";
 import { boardColumnCount, claimSet, createTable, dealCards, findVisibleSet, tableHasSet } from "./table-state.mjs";
 import { loadPreferences, savePreferences } from "./preferences.mjs";
 
@@ -18,7 +18,9 @@ const CORRECT_SET_HIGHLIGHT_MS = 500;
 const elements = Object.fromEntries([
   "colorBlindButton", "howToButton", "howToDialog", "closeHowToButton", "doneHowToButton", "featureGuide", "exampleList",
   "correctStat", "wrongStat", "timeStat", "feedback", "gameBoard", "startPrompt", "newGameButton",
-  "addThreeButton", "hintButton", "deckCount", "deckRemaining", "historyPanel", "historyCount", "historyList",
+  "addThreeButton", "hintButton", "deckCount", "deckRemaining", "historyPanel", "historyList",
+  "classicResultDialog", "classicResultTitle", "classicResultCorrect", "classicResultWrong", "classicResultTotalTime",
+  "classicResultAverageTime", "classicShareButton", "classicCloseResultButton", "classicShareStatus", "classicResultsButton",
 ].map((id) => [id, document.getElementById(id)]));
 const savedPreferences = loadPreferences();
 
@@ -35,7 +37,6 @@ const state = {
   wrong: 0,
   startedAt: 0,
   endedAt: 0,
-  lastSolvedElapsedMs: 0,
   timer: null,
   solved: [],
   colorBlind: savedPreferences.colorBlind,
@@ -43,6 +44,7 @@ const state = {
 let svgSequence = 0;
 let wrongSequence = 0;
 let pendingSetTimeout = null;
+let pendingResultTimeout = null;
 
 function cardDescription(card) {
   const paletteName = card.color;
@@ -122,6 +124,7 @@ function renderBoard({ focusKey = null, motion = null } = {}) {
   elements.addThreeButton.disabled = state.finished || state.resolvingSet || state.deck.length === 0;
   elements.hintButton.hidden = !state.active;
   elements.hintButton.disabled = state.resolvingSet || visibleSet === null;
+  elements.classicResultsButton.hidden = !state.finished;
   if (motion && previousCards && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     animateBoardChange(previousCards, motion);
   }
@@ -205,27 +208,51 @@ function animateBoardChange(previousCards, motion) {
 
 function renderHistory() {
   elements.historyPanel.hidden = state.solved.length === 0;
-  elements.historyCount.textContent = `${state.solved.length} solved`;
   elements.historyList.replaceChildren();
   state.solved.forEach((solution, index) => {
     const item = document.createElement("article");
     item.className = "history-item";
-    const meta = document.createElement("div");
-    meta.className = "history-meta";
-    const title = document.createElement("strong");
-    title.textContent = `Set ${index + 1}`;
-    const time = document.createElement("span");
-    time.textContent = formatDuration(solution.elapsedMs, 1);
-    meta.append(title, time);
+    item.setAttribute("role", "group");
+    item.setAttribute("aria-label", `Set ${index + 1}`);
     const cards = document.createElement("div");
     cards.className = "history-cards";
-    solution.cards.forEach((card) => cards.append(createCardVisual(card, true)));
-    item.append(meta, cards);
+    solution.cards.forEach((card) => {
+      const visual = createCardVisual(card, true);
+      visual.setAttribute("role", "img");
+      visual.setAttribute("aria-label", cardDescription(card));
+      cards.append(visual);
+    });
+    item.append(cards);
     elements.historyList.append(item);
   });
 }
 
-function finishIfDone({ render = true } = {}) {
+function updateResultSummary() {
+  const totalElapsedMs = Math.max(0, state.endedAt - state.startedAt);
+  elements.classicResultTitle.textContent = "Game complete";
+  elements.classicResultCorrect.textContent = String(state.correct);
+  elements.classicResultWrong.textContent = String(state.wrong);
+  elements.classicResultTotalTime.textContent = formatDuration(totalElapsedMs, 1);
+  elements.classicResultAverageTime.textContent = state.correct > 0
+    ? formatDuration(totalElapsedMs / state.correct, 1)
+    : "—";
+}
+
+function openResultDialog() {
+  if (state.finished && !elements.classicResultDialog.open) {
+    elements.classicResultDialog.showModal();
+  }
+}
+
+function scheduleResultDialog(delayMs) {
+  if (pendingResultTimeout !== null) window.clearTimeout(pendingResultTimeout);
+  pendingResultTimeout = window.setTimeout(() => {
+    pendingResultTimeout = null;
+    openResultDialog();
+  }, delayMs);
+}
+
+function finishIfDone({ render = true, motionDuration = 0 } = {}) {
   if (!state.active || state.deck.length > 0 || tableHasSet(state.board)) return false;
   state.active = false;
   state.finished = true;
@@ -234,6 +261,8 @@ function finishIfDone({ render = true } = {}) {
   state.timer = null;
   setFeedback("No more sets. Game complete!", "correct");
   updateStats(state.endedAt);
+  updateResultSummary();
+  elements.classicResultsButton.hidden = false;
   if (render) {
     renderBoard();
   } else {
@@ -241,6 +270,8 @@ function finishIfDone({ render = true } = {}) {
     elements.addThreeButton.hidden = true;
     elements.hintButton.hidden = true;
   }
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  scheduleResultDialog(reducedMotion ? 0 : motionDuration);
   return true;
 }
 
@@ -252,6 +283,9 @@ function startNewGame() {
   if (state.timer !== null) window.clearInterval(state.timer);
   if (pendingSetTimeout !== null) window.clearTimeout(pendingSetTimeout);
   pendingSetTimeout = null;
+  if (pendingResultTimeout !== null) window.clearTimeout(pendingResultTimeout);
+  pendingResultTimeout = null;
+  if (elements.classicResultDialog.open) elements.classicResultDialog.close();
   state.active = true;
   state.finished = false;
   state.resolvingSet = false;
@@ -264,7 +298,8 @@ function startNewGame() {
   state.correct = 0;
   state.wrong = 0;
   state.solved = [];
-  state.lastSolvedElapsedMs = 0;
+  elements.classicResultsButton.hidden = true;
+  elements.classicShareStatus.textContent = "";
   state.startedAt = performance.now();
   state.endedAt = state.startedAt;
   setFeedback("Select three cards to check for a set.");
@@ -291,11 +326,9 @@ function wrongTriple(cards, message = "Not a set", focusKey = null) {
   }, 520);
 }
 
-function completeSet(cards, solvedAtElapsedMs) {
-  const elapsedMs = elapsedBetweenSolves(solvedAtElapsedMs, state.lastSolvedElapsedMs);
-  state.lastSolvedElapsedMs = solvedAtElapsedMs;
+function completeSet(cards) {
   state.correct += 1;
-  state.solved.push({ cards: [...cards], elapsedMs });
+  state.solved.push({ cards: [...cards] });
   const previousKeys = new Set(state.board.map(cardKey));
   const previousColumnCount = Math.ceil(state.board.length / 3);
   const exitingKeys = cards.map(cardKey);
@@ -314,7 +347,7 @@ function completeSet(cards, solvedAtElapsedMs) {
     motion: { reflow, exitingKeys, enteringKeys },
   });
   renderHistory();
-  finishIfDone({ render: false });
+  finishIfDone({ render: false, motionDuration: reflow ? 690 : 210 });
 }
 
 function checkSelected(focusKey) {
@@ -325,14 +358,13 @@ function checkSelected(focusKey) {
     return;
   }
 
-  const solvedAtElapsedMs = Math.max(0, performance.now() - state.startedAt);
   state.resolvingSet = true;
   state.hintedCardKey = null;
   setFeedback("Set found!", "correct");
   renderBoard({ focusKey });
   pendingSetTimeout = window.setTimeout(() => {
     pendingSetTimeout = null;
-    if (state.active && state.resolvingSet) completeSet(cards, solvedAtElapsedMs);
+    if (state.active && state.resolvingSet) completeSet(cards);
   }, CORRECT_SET_HIGHLIGHT_MS);
 }
 
@@ -370,7 +402,7 @@ function addThree() {
   state.selected.clear();
   setFeedback("Three cards added. Find a set.");
   renderBoard({ motion: { enteringKeys } });
-  finishIfDone({ render: false });
+  finishIfDone({ render: false, motionDuration: 210 });
 }
 
 function hintSet() {
@@ -388,6 +420,40 @@ function hintSet() {
   updateStats();
   setFeedback(`Hint: ${cardDescription(hintedCard)} is highlighted and belongs to a visible set.`, "hint");
   renderBoard({ focusKey: state.hintedCardKey });
+}
+
+async function shareResults() {
+  const totalElapsedMs = Math.max(0, state.endedAt - state.startedAt);
+  const average = state.correct > 0 ? formatDuration(totalElapsedMs / state.correct, 1) : "—";
+  const text = [
+    "Classic Sets results",
+    `Correct: ${state.correct}`,
+    `Wrong: ${state.wrong}`,
+    `Total time: ${formatDuration(totalElapsedMs, 1)}`,
+    `Average per set: ${average}`,
+    window.location.href,
+  ].join("\n");
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    elements.classicResultDialog.append(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    if (!copied) throw new Error("Clipboard copy failed");
+  }
+
+  elements.classicShareButton.textContent = "Copied!";
+  elements.classicShareStatus.textContent = "Results copied to clipboard.";
+  window.setTimeout(() => {
+    elements.classicShareButton.textContent = "Share";
+  }, 1800);
 }
 
 function buildInstructions() {
@@ -444,6 +510,13 @@ function buildInstructions() {
 elements.newGameButton.addEventListener("click", startNewGame);
 elements.addThreeButton.addEventListener("click", addThree);
 elements.hintButton.addEventListener("click", hintSet);
+elements.classicResultsButton.addEventListener("click", openResultDialog);
+elements.classicCloseResultButton.addEventListener("click", () => elements.classicResultDialog.close());
+elements.classicShareButton.addEventListener("click", () => {
+  shareResults().catch(() => {
+    elements.classicShareStatus.textContent = "Could not copy results. Please try again.";
+  });
+});
 elements.timeStat.closest(".reveal-time-stat").addEventListener("click", (event) => {
   event.currentTarget.classList.toggle("is-revealed");
 });

@@ -51,16 +51,13 @@
             </div>
             <button class="button button-secondary add-three-button" id="addThreeButton" type="button" hidden>Add 3</button>
             <button class="button button-secondary hint-button" id="hintButton" type="button" aria-label="Reveal a card from a visible set; adds one wrong answer" hidden>Hint</button>
+            <button class="button button-secondary classic-results-button" id="classicResultsButton" type="button" hidden>Results</button>
             <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           </aside>
         </div>
       </section>
 
-      <section class="history-panel classic-history" id="historyPanel" aria-labelledby="historyHeading" hidden>
-        <div class="history-heading-row">
-          <h2 id="historyHeading">Solved Sets</h2>
-          <span id="historyCount">0 solved</span>
-        </div>
+      <section class="history-panel classic-history" id="historyPanel" aria-label="Solved sets" hidden>
         <div class="history-list" id="historyList"></div>
       </section>
     </main>
@@ -79,6 +76,23 @@
         <h3>Example sets</h3>
         <div class="example-list" id="exampleList"></div>
         <button class="button button-primary modal-done" id="doneHowToButton" type="button">Got it</button>
+      </div>
+    </dialog>
+
+    <dialog class="modal classic-result-dialog" id="classicResultDialog" aria-labelledby="classicResultTitle">
+      <div class="modal-card classic-result-card">
+        <h2 class="classic-result-title" id="classicResultTitle">Game complete</h2>
+        <dl class="classic-result-stats">
+          <div class="classic-result-stat"><dt>Correct</dt><dd id="classicResultCorrect">0</dd></div>
+          <div class="classic-result-stat"><dt>Wrong</dt><dd id="classicResultWrong">0</dd></div>
+          <div class="classic-result-stat"><dt>Total time</dt><dd id="classicResultTotalTime">0:00</dd></div>
+          <div class="classic-result-stat"><dt>Average per set</dt><dd id="classicResultAverageTime">—</dd></div>
+        </dl>
+        <div class="classic-result-actions">
+          <button class="button button-primary" id="classicShareButton" type="button">Share</button>
+          <button class="button button-secondary" id="classicCloseResultButton" type="button">Close</button>
+        </div>
+        <p class="classic-share-status" id="classicShareStatus" aria-live="polite"></p>
       </div>
     </dialog>
 

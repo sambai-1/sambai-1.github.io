@@ -1216,6 +1216,11 @@ a:focus-visible {
   color: var(--ink);
 }
 
+.classic-results-button {
+  min-height: 46px;
+  color: var(--ink);
+}
+
 .hint-button:disabled {
   cursor: default;
   opacity: .55;
@@ -1257,7 +1262,91 @@ a:focus-visible {
 }
 
 .classic-history {
-  margin-top: 30px;
+  margin-top: 20px;
+}
+
+.classic-history .history-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 12px;
+}
+
+.classic-history .history-item {
+  display: block;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid #eceef0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.classic-history .history-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.classic-history .history-cards .set-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  flex: initial;
+  border-radius: 4px;
+}
+
+.classic-result-dialog {
+  width: min(480px, calc(100% - 28px));
+}
+
+.classic-result-card {
+  padding: 24px;
+}
+
+.classic-result-card .classic-result-title {
+  margin: 0 0 18px;
+  font-size: 22px;
+  text-transform: none;
+}
+
+.classic-result-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+  margin: 0 0 22px;
+}
+
+.classic-result-stat {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.classic-result-stat dt {
+  color: var(--muted);
+}
+
+.classic-result-stat dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.classic-result-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.classic-share-status {
+  min-height: 1.5em;
+  margin: 8px 0 0;
+  color: var(--good);
+  text-align: right;
 }
 
 @media (max-width: 760px) {
@@ -1280,6 +1369,11 @@ a:focus-visible {
 }
 
 @media (max-width: 520px) {
+  .classic-result-stats {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
   .classic-game-page .page-shell {
     width: min(100% - 24px, 1280px);
     padding-top: 24px;
@@ -1317,6 +1411,10 @@ a:focus-visible {
   }
 
   .classic-actions .hint-button {
+    grid-column: 1 / -1;
+  }
+
+  .classic-actions .classic-results-button {
     grid-column: 1 / -1;
   }
 
