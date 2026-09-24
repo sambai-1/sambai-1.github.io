@@ -941,6 +941,91 @@ a:focus-visible {
   }
 }
 
+.classic-setup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 12px 18px;
+}
+
+.classic-setup-left,
+.classic-setup-right {
+  display: flex;
+  align-items: center;
+}
+
+.classic-setup-right {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 20px;
+  margin-left: auto;
+}
+
+.classic-setup .classic-new-game {
+  min-height: 42px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #075f3c;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.classic-setup .toolbar-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  min-height: 36px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue-dark);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.classic-setup .classic-new-game:hover,
+.classic-setup .toolbar-link:hover {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+  text-decoration: none;
+}
+
+.classic-setup .toolbar-link[aria-pressed="true"] {
+  color: #075f3c;
+}
+
+.classic-setup .toolbar-link[aria-pressed="true"]:hover {
+  color: #fff;
+}
+
+.classic-setup :focus-visible {
+  outline: 3px solid #164e32;
+  outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+  .classic-setup {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .classic-setup-right {
+    gap: 5px 12px;
+  }
+
+  .classic-setup .classic-new-game {
+    min-width: 120px;
+    padding-inline: 12px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -949,5 +1034,254 @@ a:focus-visible {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+.classic-game {
+  padding: 20px 0 0;
+  border-top: 1px solid #e7e9eb;
+}
+
+.classic-stats {
+  width: 100%;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.classic-stats > div {
+  min-width: 0;
+  flex: 1 1 0;
+  padding: 4px 6px;
+}
+
+.classic-play-area {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  margin-top: 10px;
+}
+
+.classic-board-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.classic-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.classic-card-button {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.classic-card-button:hover {
+  transform: translateY(-2px);
+}
+
+.classic-card-button:focus-visible {
+  outline: 3px solid rgb(38 124 185 / 50%);
+  outline-offset: 3px;
+}
+
+.classic-card-button.is-selected .set-card {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(38 124 185 / 25%);
+  transform: translateY(-2px);
+}
+
+.classic-card-button.is-wrong .set-card {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 3px rgb(198 61 70 / 24%);
+  animation: shake 180ms ease-in-out;
+}
+
+.classic-board .set-card {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.classic-card-button:disabled {
+  cursor: default;
+}
+
+.classic-actions {
+  display: flex;
+  width: 190px;
+  flex: 0 0 190px;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.classic-side-meta {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 8px;
+}
+
+.classic-side-meta .classic-time-stat {
+  width: auto;
+  justify-content: center;
+}
+
+.classic-side-meta .classic-time-stat > div {
+  min-width: 0;
+  padding: 4px;
+}
+
+.reveal-time-stat {
+  cursor: pointer;
+}
+
+.reveal-time-stat dd {
+  border-radius: 4px;
+  background: #d1d4d6;
+  color: #d1d4d6;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.reveal-time-stat:hover dd,
+.reveal-time-stat:focus-within dd,
+.reveal-time-stat.is-revealed dd {
+  background: transparent;
+  color: var(--ink);
+}
+
+.reveal-time-stat:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid #164e32;
+  outline-offset: 3px;
+}
+
+.classic-actions .feedback {
+  min-height: 42px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.add-three-button {
+  min-height: 46px;
+  color: var(--ink);
+}
+
+.add-three-button:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+.add-three-button.is-wrong {
+  border-color: var(--bad);
+  background: #ffe6e8;
+  color: #9c2029;
+  animation: shake 180ms ease-in-out;
+}
+
+.classic-start {
+  display: grid;
+  min-height: 300px;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  border: 1px dashed #d4d9dd;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.classic-start p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.classic-new-game {
+  min-width: 150px;
+  min-height: 48px;
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+.classic-history {
+  margin-top: 30px;
+}
+
+@media (max-width: 760px) {
+  .classic-play-area {
+    gap: 12px;
+  }
+
+  .classic-actions {
+    width: 176px;
+    flex-basis: 176px;
+  }
+
+  .classic-actions .feedback {
+    min-height: 54px;
+  }
+
+  .classic-board {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .classic-game-page .page-shell {
+    width: min(100% - 24px, 1280px);
+    padding-top: 24px;
+  }
+
+  .classic-play-area {
+    flex-direction: column-reverse;
+  }
+
+  .classic-actions {
+    width: 100%;
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 8px 12px;
+    padding: 0;
+  }
+
+  .classic-actions .classic-stats {
+    grid-column: 1 / -1;
+  }
+
+  .classic-actions .classic-side-meta {
+    grid-column: 1 / -1;
+  }
+
+  .classic-actions .feedback {
+    grid-column: 1 / -1;
+    min-height: 24px;
+  }
+
+  .classic-actions .add-three-button {
+    grid-column: 1 / -1;
+  }
+
+  .classic-board {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .classic-card-button .set-card {
+    border-radius: 4px;
+  }
+
+  .classic-start {
+    min-height: 250px;
   }
 }

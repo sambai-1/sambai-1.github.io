@@ -21,7 +21,7 @@ import {
 } from "./run-state.mjs";
 import { loadPreferences, savePreferences } from "./preferences.mjs";
 
-const SHARE_URL = "https://sambai-1.github.io/projects/sets/";
+const SHARE_URL = "https://sambai-1.github.io/projects/sets/legacy/";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const COLOR_PALETTES = Object.freeze({
   standard: Object.freeze({ red: "#ed2134", purple: "#64369b", green: "#00a957" }),

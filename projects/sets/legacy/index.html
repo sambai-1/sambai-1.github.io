@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A fast puzzle based on the all-same-or-all-different rule.">
+    <title>Sets | Sam Bai</title>
+    <link rel="stylesheet" href="../fonts.css">
+    <link rel="stylesheet" href="../sets.css">
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="site-header">
+        <div>
+          <a class="home-link" href="/">← Sam Bai</a>
+          <h1>Sets</h1>
+        </div>
+      </header>
+
+      <section class="setup-panel" aria-label="Game settings">
+        <fieldset class="control-group">
+          <legend>Layout</legend>
+          <div class="segmented-control" id="layoutModeControls">
+            <button type="button" data-layout-mode="inline" aria-pressed="true">Inline</button>
+            <button type="button" data-layout-mode="embedded" aria-pressed="false">Embedded</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="control-group">
+          <legend>Game</legend>
+          <div class="segmented-control" id="runModeControls">
+            <button type="button" data-run-mode="timed" aria-pressed="false">30 Seconds</button>
+            <button type="button" data-run-mode="score" aria-pressed="true">Race to 10</button>
+            <button type="button" data-run-mode="unlimited" aria-pressed="false">Unlimited</button>
+          </div>
+        </fieldset>
+
+        <div class="candidate-settings" id="candidateSettings">
+          <button
+            class="toolbar-link"
+            id="candidateSettingsButton"
+            type="button"
+            aria-expanded="false"
+            aria-controls="candidateSettingsCard"
+          >Candidates</button>
+          <div
+            class="slider-settings-card candidate-settings-card"
+            id="candidateSettingsCard"
+            role="group"
+            aria-label="Number of candidates"
+            hidden
+          >
+            <div class="slider-heading">
+              <label for="candidateSlider">Candidates</label>
+              <output id="candidateSliderValue" for="candidateSlider">6</output>
+            </div>
+            <input id="candidateSlider" type="range" min="6" max="15" step="3" value="6">
+            <div class="slider-labels" aria-hidden="true">
+              <span>6</span><span>9</span><span>12</span><span>15</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="difference-settings" id="differenceSettings">
+          <button
+            class="toolbar-link"
+            id="differenceSettingsButton"
+            type="button"
+            aria-expanded="false"
+            aria-controls="differenceSettingsCard"
+          >Differences</button>
+          <div
+            class="slider-settings-card difference-settings-card"
+            id="differenceSettingsCard"
+            role="group"
+            aria-label="Number of differences"
+            hidden
+          >
+            <div class="slider-heading">
+              <label for="differenceSlider">Differences</label>
+              <output id="differenceSliderValue" for="differenceSlider">Random</output>
+            </div>
+            <input id="differenceSlider" type="range" min="1" max="5" step="1" value="5">
+            <div class="slider-labels" aria-hidden="true">
+              <span>1</span><span>2</span><span>3</span><span>4</span><span>Random</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <div class="color-settings" id="colorSettings">
+            <button
+              class="toolbar-link"
+              id="colorSettingsButton"
+              type="button"
+              aria-expanded="false"
+              aria-controls="colorSettingsCard"
+            >Colorblind</button>
+            <div
+              class="color-settings-card"
+              id="colorSettingsCard"
+              role="group"
+              aria-label="Colorblind settings"
+              hidden
+            >
+              <strong>Colorblind palette</strong>
+              <label class="colorblind-toggle">
+                <input id="colorBlindToggle" type="checkbox">
+                <span>Use colorblind colors</span>
+              </label>
+            </div>
+          </div>
+          <button class="toolbar-link" id="howToButton" type="button">How to Play</button>
+        </div>
+      </section>
+
+      <section class="game-panel" aria-labelledby="gameHeading">
+        <div class="game-heading-row">
+          <div>
+            <p class="eyebrow" id="gameModeLabel">RACE TO 10</p>
+            <div class="game-title-row">
+              <h2 id="gameHeading">Complete the set</h2>
+              <div class="review-controls" id="reviewControls" hidden>
+                <button class="game-title-button" id="reshareButton" type="button">Share</button>
+                <button class="game-title-button" id="newGameButton" type="button">New Game</button>
+              </div>
+            </div>
+          </div>
+          <dl class="stats" aria-label="Current game statistics">
+            <div>
+              <dt>Correct</dt>
+              <dd id="correctStat">0</dd>
+            </div>
+            <div>
+              <dt>Wrong</dt>
+              <dd id="wrongStat">0</dd>
+            </div>
+            <div>
+              <dt id="timeLabel">Time</dt>
+              <dd id="timeStat">0:00.0</dd>
+            </div>
+          </dl>
+        </div>
+
+        <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+        <div id="photoBoard"></div>
+      </section>
+
+      <section class="history-panel" id="historyPanel" aria-labelledby="historyHeading" hidden>
+        <div class="history-heading-row">
+          <h2 id="historyHeading">Solved Sets</h2>
+          <span id="historyCount">0 solved</span>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+    </main>
+
+    <dialog class="modal how-to-modal" id="howToDialog" aria-labelledby="howToTitle">
+      <div class="modal-card">
+        <div class="modal-heading">
+          <h2 id="howToTitle">How to Play</h2>
+          <button class="icon-button" id="closeHowToButton" type="button" aria-label="Close instructions">×</button>
+        </div>
+
+        <p>Choose the card that joins the two shown cards to make a valid set.</p>
+        <p><strong>A set has three cards where every feature is either all the same or all different.</strong></p>
+
+        <p><strong>Differences</strong> controls how many features must be all different. One keeps three features the same; four makes every feature different.</p>
+
+        <h3>The four features</h3>
+        <div class="feature-guide" id="featureGuide"></div>
+
+        <h3>Example sets</h3>
+        <div class="example-list" id="exampleList"></div>
+
+        <h3>Choose a card</h3>
+        <p>Pick the completing card. Candidates are grouped in threes.</p>
+        <p><strong>Inline</strong> separates the givens. <strong>Embedded</strong> highlights them in green within the grid.</p>
+
+        <h3>Game types</h3>
+        <ul>
+          <li><strong>30 Seconds:</strong> solve as many as possible before time expires.</li>
+          <li><strong>Race to 10:</strong> reach ten correct answers as quickly as possible.</li>
+          <li><strong>Unlimited:</strong> keep solving until your first wrong answer.</li>
+        </ul>
+        <p>Wrong attempts count. You can retry.</p>
+
+        <button class="button button-primary modal-done" id="doneHowToButton" type="button">Got it</button>
+      </div>
+    </dialog>
+
+    <dialog class="modal result-modal" id="resultDialog" aria-labelledby="resultTitle">
+      <div class="modal-card">
+        <p class="eyebrow" id="resultEyebrow">RUN COMPLETE</p>
+        <h2 id="resultTitle">Your results</h2>
+        <div class="result-stats" id="resultStats"></div>
+        <pre class="share-preview" id="sharePreview"></pre>
+        <p class="copy-status" id="copyStatus" role="status" aria-live="polite"></p>
+        <div class="result-actions">
+          <button class="button button-primary" id="shareButton" type="button">Share</button>
+          <button class="button button-secondary" id="closeResultButton" type="button">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script type="module" src="../game.mjs"></script>
+  </body>
+</html>
