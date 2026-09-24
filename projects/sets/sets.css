@@ -427,6 +427,10 @@ a:focus-visible {
   color: var(--bad);
 }
 
+.feedback.is-hint {
+  color: #795500;
+}
+
 .photo-layout {
   display: flex;
   gap: 16px;
@@ -1067,8 +1071,12 @@ a:focus-visible {
 }
 
 .classic-board {
+  --board-columns: 6;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--board-columns), minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 6px 0;
 }
@@ -1082,6 +1090,16 @@ a:focus-visible {
   background: transparent;
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classic-card-button {
+    transition: none;
+  }
+
+  .classic-card-button.is-wrong .set-card {
+    animation: none;
+  }
 }
 
 .classic-card-button:hover {
@@ -1099,10 +1117,26 @@ a:focus-visible {
   transform: translateY(-2px);
 }
 
+.classic-card-button.is-correct .set-card {
+  border-color: var(--good);
+  box-shadow: 0 0 0 4px rgb(19 138 80 / 32%);
+  background-color: #ebf8f0;
+}
+
+.classic-card-button[aria-disabled="true"] {
+  cursor: default;
+}
+
 .classic-card-button.is-wrong .set-card {
   border-color: var(--bad);
   box-shadow: 0 0 0 3px rgb(198 61 70 / 24%);
   animation: shake 180ms ease-in-out;
+}
+
+.classic-card-button.is-hinted .set-card {
+  border-color: #b77900;
+  box-shadow: 0 0 0 4px rgb(230 159 0 / 42%);
+  background-color: #fff8e6;
 }
 
 .classic-board .set-card {
@@ -1175,6 +1209,16 @@ a:focus-visible {
 .add-three-button {
   min-height: 46px;
   color: var(--ink);
+}
+
+.hint-button {
+  min-height: 46px;
+  color: var(--ink);
+}
+
+.hint-button:disabled {
+  cursor: default;
+  opacity: .55;
 }
 
 .add-three-button:disabled {
@@ -1269,6 +1313,10 @@ a:focus-visible {
   }
 
   .classic-actions .add-three-button {
+    grid-column: 1 / -1;
+  }
+
+  .classic-actions .hint-button {
     grid-column: 1 / -1;
   }
 

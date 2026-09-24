@@ -92,6 +92,10 @@ export function formatDuration(milliseconds, fractionDigits = 3) {
   return `${minutes}:${String(seconds).padStart(2, "0")}.${fractionText}`;
 }
 
+export function elapsedBetweenSolves(currentElapsedMs, previousElapsedMs = 0) {
+  return Math.max(0, currentElapsedMs - previousElapsedMs);
+}
+
 export function buildShareText(run, pageUrl) {
   const lines = [`Sets — ${RUN_MODES[run.settings.runMode].label}`];
   lines.push(`${run.settings.difficulty} candidates`);

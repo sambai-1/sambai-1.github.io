@@ -1,6 +1,6 @@
 import { FEATURES, FEATURE_NAMES, cardKey, isSet } from "./core.mjs";
-import { formatDuration } from "./run-state.mjs";
-import { claimSet, createTable, dealCards, tableHasSet } from "./table-state.mjs";
+import { elapsedBetweenSolves, formatDuration } from "./run-state.mjs";
+import { boardColumnCount, claimSet, createTable, dealCards, findVisibleSet, tableHasSet } from "./table-state.mjs";
 import { loadPreferences, savePreferences } from "./preferences.mjs";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -14,10 +14,11 @@ const COLOR_NAMES = {
 };
 const NUMBER_WORDS = { 1: "one", 2: "two", 3: "three" };
 const FEATURE_LABELS = { shape: "Shape", color: "Color", number: "Number", shading: "Shading" };
+const CORRECT_SET_HIGHLIGHT_MS = 500;
 const elements = Object.fromEntries([
   "colorBlindButton", "howToButton", "howToDialog", "closeHowToButton", "doneHowToButton", "featureGuide", "exampleList",
   "correctStat", "wrongStat", "timeStat", "feedback", "gameBoard", "startPrompt", "newGameButton",
-  "addThreeButton", "deckCount", "deckRemaining", "historyPanel", "historyCount", "historyList",
+  "addThreeButton", "hintButton", "deckCount", "deckRemaining", "historyPanel", "historyCount", "historyList",
 ].map((id) => [id, document.getElementById(id)]));
 const savedPreferences = loadPreferences();
 
@@ -28,16 +29,20 @@ const state = {
   deck: [],
   selected: new Set(),
   wrongCards: new Set(),
+  resolvingSet: false,
+  hintedCardKey: null,
   correct: 0,
   wrong: 0,
   startedAt: 0,
   endedAt: 0,
+  lastSolvedElapsedMs: 0,
   timer: null,
   solved: [],
   colorBlind: savedPreferences.colorBlind,
 };
 let svgSequence = 0;
 let wrongSequence = 0;
+let pendingSetTimeout = null;
 
 function cardDescription(card) {
   const paletteName = card.color;
@@ -77,8 +82,14 @@ function setFeedback(message = "", kind = "") {
   elements.feedback.className = `feedback${kind ? ` is-${kind}` : ""}`;
 }
 
-function renderBoard({ focusKey = null } = {}) {
+function renderBoard({ focusKey = null, motion = null } = {}) {
   const showBoard = state.active || state.finished;
+  const visibleSet = state.active ? findVisibleSet(state.board) : null;
+  const previousCards = motion
+    ? new Map([...elements.gameBoard.querySelectorAll(".classic-card-button")]
+      .map((button) => [button.dataset.cardKey, { button, rect: button.getBoundingClientRect() }]))
+    : null;
+  elements.gameBoard.style.setProperty("--board-columns", boardColumnCount(state.board.length));
   elements.gameBoard.replaceChildren();
   state.board.forEach((card) => {
     const key = cardKey(card);
@@ -89,7 +100,15 @@ function renderBoard({ focusKey = null } = {}) {
     button.setAttribute("aria-label", cardDescription(card));
     button.setAttribute("aria-pressed", String(state.selected.has(key)));
     if (state.selected.has(key)) button.classList.add("is-selected");
+    if (state.resolvingSet) {
+      button.setAttribute("aria-disabled", "true");
+      if (state.selected.has(key)) button.classList.add("is-correct");
+    }
     if (state.wrongCards.has(key)) button.classList.add("is-wrong");
+    if (state.hintedCardKey === key) {
+      button.classList.add("is-hinted");
+      button.setAttribute("aria-label", `Hint: ${cardDescription(card)} is part of a visible set`);
+    }
     button.disabled = !state.active;
     button.append(createCardVisual(card));
     button.addEventListener("click", () => toggleCard(card));
@@ -100,12 +119,87 @@ function renderBoard({ focusKey = null } = {}) {
   elements.gameBoard.hidden = !showBoard;
   elements.startPrompt.hidden = showBoard;
   elements.addThreeButton.hidden = !state.active;
-  elements.addThreeButton.disabled = state.finished || state.deck.length === 0;
+  elements.addThreeButton.disabled = state.finished || state.resolvingSet || state.deck.length === 0;
+  elements.hintButton.hidden = !state.active;
+  elements.hintButton.disabled = state.resolvingSet || visibleSet === null;
+  if (motion && previousCards && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    animateBoardChange(previousCards, motion);
+  }
   if (focusKey && state.active) {
     const target = [...elements.gameBoard.querySelectorAll(".classic-card-button")]
       .find((button) => button.dataset.cardKey === focusKey)
+      ?? (motion?.enteringKeys ?? []).map((key) => [...elements.gameBoard.querySelectorAll(".classic-card-button")]
+        .find((button) => button.dataset.cardKey === key)).find(Boolean)
       ?? elements.gameBoard.querySelector(".classic-card-button");
     target?.focus();
+  }
+}
+
+function animateBoardChange(previousCards, motion) {
+  const duration = motion.reflow ? 500 : 210;
+  const exitDuration = motion.reflow ? 190 : duration;
+  const enteringKeys = new Set(motion.enteringKeys ?? []);
+  const exitingKeys = new Set(motion.exitingKeys ?? []);
+  const currentButtons = new Map([...elements.gameBoard.querySelectorAll(".classic-card-button")]
+    .map((button) => [button.dataset.cardKey, button]));
+
+  for (const [key, previous] of previousCards) {
+    if (currentButtons.has(key)) {
+      if (motion.reflow && !enteringKeys.has(key)) {
+        const nextRect = currentButtons.get(key).getBoundingClientRect();
+        const dx = previous.rect.left - nextRect.left;
+        const dy = previous.rect.top - nextRect.top;
+        if (dx || dy) {
+          const button = currentButtons.get(key);
+          button.style.position = "relative";
+          button.style.zIndex = "2";
+          const moveAnimation = button.animate(
+            [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }],
+            { duration, delay: exitDuration, fill: "backwards", easing: "linear" },
+          );
+          moveAnimation.finished.then(() => {
+            button.style.removeProperty("position");
+            button.style.removeProperty("z-index");
+          }, () => {
+            button.style.removeProperty("position");
+            button.style.removeProperty("z-index");
+          });
+        }
+      }
+      continue;
+    }
+
+    if (!exitingKeys.has(key)) continue;
+    const ghost = previous.button.cloneNode(true);
+    const rect = previous.rect;
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.tabIndex = -1;
+    ghost.disabled = true;
+    Object.assign(ghost.style, {
+      position: "fixed",
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      margin: "0",
+      zIndex: "1",
+      pointerEvents: "none",
+    });
+    document.body.append(ghost);
+    const exitAnimation = ghost.animate(
+      [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.88)" }],
+      { duration: exitDuration, easing: "ease-out" },
+    );
+    exitAnimation.finished.then(() => ghost.remove(), () => ghost.remove());
+  }
+
+  for (const key of enteringKeys) {
+    const button = currentButtons.get(key);
+    if (!button) continue;
+    button.animate(
+      [{ opacity: 0, transform: "scale(.94)" }, { opacity: 1, transform: "scale(1)" }],
+      { duration, easing: "cubic-bezier(.2,.75,.25,1)" },
+    );
   }
 }
 
@@ -131,7 +225,7 @@ function renderHistory() {
   });
 }
 
-function finishIfDone() {
+function finishIfDone({ render = true } = {}) {
   if (!state.active || state.deck.length > 0 || tableHasSet(state.board)) return false;
   state.active = false;
   state.finished = true;
@@ -140,7 +234,13 @@ function finishIfDone() {
   state.timer = null;
   setFeedback("No more sets. Game complete!", "correct");
   updateStats(state.endedAt);
-  renderBoard();
+  if (render) {
+    renderBoard();
+  } else {
+    elements.gameBoard.querySelectorAll(".classic-card-button").forEach((button) => { button.disabled = true; });
+    elements.addThreeButton.hidden = true;
+    elements.hintButton.hidden = true;
+  }
   return true;
 }
 
@@ -150,16 +250,21 @@ function drawCards(count) {
 
 function startNewGame() {
   if (state.timer !== null) window.clearInterval(state.timer);
+  if (pendingSetTimeout !== null) window.clearTimeout(pendingSetTimeout);
+  pendingSetTimeout = null;
   state.active = true;
   state.finished = false;
+  state.resolvingSet = false;
   const table = createTable();
   state.deck = table.deck;
   state.board = table.board;
   state.selected.clear();
   state.wrongCards.clear();
+  state.hintedCardKey = null;
   state.correct = 0;
   state.wrong = 0;
   state.solved = [];
+  state.lastSolvedElapsedMs = 0;
   state.startedAt = performance.now();
   state.endedAt = state.startedAt;
   setFeedback("Select three cards to check for a set.");
@@ -186,7 +291,33 @@ function wrongTriple(cards, message = "Not a set", focusKey = null) {
   }, 520);
 }
 
-function checkSelected() {
+function completeSet(cards, solvedAtElapsedMs) {
+  const elapsedMs = elapsedBetweenSolves(solvedAtElapsedMs, state.lastSolvedElapsedMs);
+  state.lastSolvedElapsedMs = solvedAtElapsedMs;
+  state.correct += 1;
+  state.solved.push({ cards: [...cards], elapsedMs });
+  const previousKeys = new Set(state.board.map(cardKey));
+  const previousColumnCount = Math.ceil(state.board.length / 3);
+  const exitingKeys = cards.map(cardKey);
+  claimSet(state, cards);
+  const currentKeys = new Set(state.board.map(cardKey));
+  const enteringKeys = [...currentKeys].filter((key) => !previousKeys.has(key));
+  const reflow = previousColumnCount > 4 && Math.ceil(state.board.length / 3) < previousColumnCount;
+  state.resolvingSet = false;
+  state.hintedCardKey = null;
+  state.selected.clear();
+  state.wrongCards.clear();
+  setFeedback("Set found!", "correct");
+  updateStats();
+  renderBoard({
+    focusKey: cards[0] ? cardKey(cards[0]) : null,
+    motion: { reflow, exitingKeys, enteringKeys },
+  });
+  renderHistory();
+  finishIfDone({ render: false });
+}
+
+function checkSelected(focusKey) {
   const keys = state.selected;
   const cards = state.board.filter((card) => keys.has(cardKey(card)));
   if (!isSet(cards)) {
@@ -194,26 +325,24 @@ function checkSelected() {
     return;
   }
 
-  const elapsedMs = performance.now() - state.startedAt;
-  state.correct += 1;
-  state.solved.push({ cards: [...cards], elapsedMs });
-  claimSet(state, cards);
-  state.selected.clear();
-  state.wrongCards.clear();
+  const solvedAtElapsedMs = Math.max(0, performance.now() - state.startedAt);
+  state.resolvingSet = true;
+  state.hintedCardKey = null;
   setFeedback("Set found!", "correct");
-  updateStats();
-  renderBoard({ focusKey: cards[0] ? cardKey(cards[0]) : null });
-  renderHistory();
-  finishIfDone();
+  renderBoard({ focusKey });
+  pendingSetTimeout = window.setTimeout(() => {
+    pendingSetTimeout = null;
+    if (state.active && state.resolvingSet) completeSet(cards, solvedAtElapsedMs);
+  }, CORRECT_SET_HIGHLIGHT_MS);
 }
 
 function toggleCard(card) {
-  if (!state.active) return;
+  if (!state.active || state.resolvingSet) return;
   const key = cardKey(card);
   if (state.selected.has(key)) state.selected.delete(key);
   else if (state.selected.size < 3) state.selected.add(key);
   if (state.selected.size === 3) {
-    checkSelected();
+    checkSelected(key);
     return;
   }
   setFeedback(`${state.selected.size} of 3 cards selected.`);
@@ -229,16 +358,36 @@ function flashAddThreePenalty() {
 }
 
 function addThree() {
-  if (!state.active || state.deck.length === 0) return;
+  if (!state.active || state.resolvingSet || state.deck.length === 0) return;
   if (tableHasSet(state.board)) {
     flashAddThreePenalty();
     return;
   }
+  const previousKeys = new Set(state.board.map(cardKey));
   drawCards(3);
+  const enteringKeys = state.board.map(cardKey).filter((key) => !previousKeys.has(key));
+  state.hintedCardKey = null;
   state.selected.clear();
   setFeedback("Three cards added. Find a set.");
-  renderBoard();
-  finishIfDone();
+  renderBoard({ motion: { enteringKeys } });
+  finishIfDone({ render: false });
+}
+
+function hintSet() {
+  if (!state.active || state.resolvingSet) return;
+  const visibleSet = findVisibleSet(state.board);
+  if (!visibleSet) {
+    elements.hintButton.disabled = true;
+    setFeedback("No set is visible. Add 3 cards to continue.");
+    return;
+  }
+
+  const hintedCard = visibleSet[0];
+  state.wrong += 1;
+  state.hintedCardKey = cardKey(hintedCard);
+  updateStats();
+  setFeedback(`Hint: ${cardDescription(hintedCard)} is highlighted and belongs to a visible set.`, "hint");
+  renderBoard({ focusKey: state.hintedCardKey });
 }
 
 function buildInstructions() {
@@ -294,6 +443,7 @@ function buildInstructions() {
 
 elements.newGameButton.addEventListener("click", startNewGame);
 elements.addThreeButton.addEventListener("click", addThree);
+elements.hintButton.addEventListener("click", hintSet);
 elements.timeStat.closest(".reveal-time-stat").addEventListener("click", (event) => {
   event.currentTarget.classList.toggle("is-revealed");
 });
